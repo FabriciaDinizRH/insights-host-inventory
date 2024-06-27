@@ -187,7 +187,7 @@ def system_deleted_notification(notification_type, host):
     notification = {
         "context": {
             "inventory_id": host.get("id"),
-            "fqdn": canonical_facts.get("fqdn", ""),
+            "hostname": canonical_facts.get("fqdn", ""),
             "display_name": host.get("display_name"),
             "rhel_version": build_rhel_version_str(system_profile),
             "tags": host.get("tags"),
