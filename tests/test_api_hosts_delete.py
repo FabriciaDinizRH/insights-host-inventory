@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from unittest import mock
 from unittest.mock import patch
 
@@ -19,6 +20,7 @@ from tests.helpers.db_utils import db_host
 from tests.helpers.mq_utils import assert_delete_event_is_valid
 from tests.helpers.mq_utils import assert_delete_notification_is_valid
 from tests.helpers.test_utils import SYSTEM_IDENTITY
+from tests.helpers.test_utils import USER_IDENTITY
 from tests.helpers.test_utils import generate_uuid
 
 
@@ -306,7 +308,10 @@ def test_delete_host_with_RBAC_denied(
 
 
 def test_delete_host_from_different_org(api_delete_host, db_create_host, db_get_host):
-    host = db_create_host(identity=SYSTEM_IDENTITY)
+    bad_identity = deepcopy(USER_IDENTITY)
+    bad_identity["org_id"] = "difforg"
+
+    host = db_create_host(identity=bad_identity)
 
     response_status, _ = api_delete_host(host.id)
     assert_response_status(response_status, 403)
