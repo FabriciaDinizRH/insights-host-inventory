@@ -122,7 +122,7 @@ def _get_field_filter_for_deepest_param(sp_spec: dict, filter: dict, parent_node
 # ]
 # Has a similar purpose to _unique_paths, but the OS filter works a bit differently.
 def separate_operating_system_filters(filter_url_params) -> list[OsFilter]:
-    os_filter_list = []
+    os_filter_list: list[OsFilter] = []
 
     # Handle filter_url_params if a list is passed in
     if isinstance(filter_url_params, list):
