@@ -26,6 +26,7 @@ def create_partitioned_table_index(
     num_partitions: int | None = None,
     schema: str = INVENTORY_SCHEMA,
     unique: bool = False,
+    using_clause: str | None = None,
 ) -> None:
     """
     Create an index on a partitioned table and all its partitions.
@@ -42,13 +43,31 @@ def create_partitioned_table_index(
         num_partitions: Number of partitions (0 to num_partitions-1). Defaults to HOSTS_TABLE_NUM_PARTITIONS env var
         schema: Database schema name. Defaults to INVENTORY_SCHEMA
         unique: Create an UNIQUE index. Defaults to False
+        using_clause: Index method to use (e.g., "GIN", "GIST", "BTREE"). Defaults to None (PostgreSQL default)
 
-    Example:
+    Examples:
+        # Standard B-tree index
         create_partitioned_table_index(
             table_name="hosts",
             index_name="idx_hosts_last_check_in",
             index_definition="(last_check_in)",
             num_partitions=32
+        )
+
+        # GIN index for JSONB data
+        create_partitioned_table_index(
+            table_name="system_profiles_static",
+            index_name="idx_bootc_status_gin",
+            index_definition="(bootc_status)",
+            using_clause="GIN"
+        )
+
+        # GIN index with JSON path expression
+        create_partitioned_table_index(
+            table_name="system_profiles_static",
+            index_name="idx_bootc_image_digest",
+            index_definition="((bootc_status -> 'booted' ->> 'image_digest'))",
+            using_clause="GIN"
         )
 
     Raises:
@@ -61,22 +80,23 @@ def create_partitioned_table_index(
     validate_num_partitions(num_partitions)
 
     migration_mode = MIGRATION_MODE
+    unique_clause = "UNIQUE" if unique else ""
+    using_clause_sql = f" USING {using_clause}" if using_clause else ""
 
+    using_info = f" using {using_clause} method" if using_clause else ""
     logger.info(
         f"Creating index '{index_name}' on partitioned table '{schema}.{table_name}' "
-        f"with {num_partitions} partitions in '{migration_mode}' mode"
+        f"with {num_partitions} partitions in '{migration_mode}' mode {using_info}"
     )
 
     if migration_mode == "automated":
         # For automated mode (local, ephemeral, on-premise), create index directly on parent table
         logger.info(f"Creating index '{index_name}' directly on parent table '{schema}.{table_name}'")
 
-        unique_clause = "UNIQUE" if unique else ""
-
         op.execute(
             text(f"""
                 CREATE {unique_clause} INDEX IF NOT EXISTS {index_name}
-                ON {schema}.{table_name} {index_definition};
+                ON {schema}.{table_name}{using_clause_sql} {index_definition};
             """)
         )
 
@@ -88,8 +108,6 @@ def create_partitioned_table_index(
             # Step 1: Create indexes on all partition tables using CREATE INDEX CONCURRENTLY
             logger.info(f"Creating indexes on {num_partitions} partitions using CREATE INDEX CONCURRENTLY...")
 
-            unique_clause = "UNIQUE" if unique else ""
-
             for i in range(num_partitions):
                 partition_name = f"{table_name}_p{i}"
                 partition_index_name = f"{table_name}_p{i}_{index_name}"
@@ -100,7 +118,7 @@ def create_partitioned_table_index(
                     op.execute(
                         text(f"""
                             CREATE {unique_clause} INDEX CONCURRENTLY IF NOT EXISTS {partition_index_name}
-                            ON {schema}.{partition_name} {index_definition};
+                            ON {schema}.{partition_name}{using_clause_sql} {index_definition};
                         """)
                     )
 
@@ -136,7 +154,7 @@ def create_partitioned_table_index(
             op.execute(
                 text(f"""
                     CREATE {unique_clause} INDEX IF NOT EXISTS {index_name}
-                    ON {schema}.{table_name} {index_definition};
+                    ON {schema}.{table_name}{using_clause_sql} {index_definition};
                 """)
             )
 
@@ -188,7 +206,13 @@ def drop_partitioned_table_index(
         # For automated mode (local, ephemeral, on-premise), drop index directly from parent table
         logger.info(f"Dropping index '{index_name}' directly from parent table '{schema}.{table_name}'")
 
-        op.drop_index(index_name, table_name=table_name, schema=schema, if_exists=if_exists)
+        if_exists_clause = "IF EXISTS" if if_exists else ""
+
+        op.execute(
+            text(f"""
+                DROP INDEX {if_exists_clause} {schema}.{index_name};
+            """)
+        )
 
         logger.info(f"Successfully dropped index '{index_name}' from parent table")
 
