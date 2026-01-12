@@ -175,6 +175,7 @@ def test_db_schema_hosts_max_len(inventory_db_session):
             rand_str(): [],
         }
     }
+    canonical_facts = generate_canonical_facts()
     host = minimal_db_host(
         account=generate_string_of_length(10),
         org_id=generate_string_of_length(36),
@@ -183,7 +184,7 @@ def test_db_schema_hosts_max_len(inventory_db_session):
         facts=generate_facts(),
         tags=tags,
         tags_alt=convert_tag_from_nested_to_structured(tags),
-        canonical_facts=generate_canonical_facts(),
+        **canonical_facts,
         system_profile_facts=create_system_profile_facts(),
         groups=groups,
         reporter=reporter,

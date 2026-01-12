@@ -42,12 +42,20 @@ class Host(Base):
     org_id = Column(String())
     display_name = Column(String())
     ansible_host = Column(String())
+    insights_id = Column(UUID(as_uuid=True))
+    subscription_manager_id = Column(String())
+    satellite_id = Column(String())
+    fqdn = Column(String())
+    bios_uuid = Column(String())
+    ip_addresses = Column(JSONB)
+    mac_addresses = Column(JSONB)
+    provider_id = Column(String())
+    provider_type = Column(String())
     created_on = Column(DateTime(timezone=True))
     modified_on = Column(DateTime(timezone=True))
     facts = Column(JSONB)
     tags = Column(JSONB)
     tags_alt = Column(JSONB)
-    canonical_facts = Column(JSONB)
     system_profile_facts = Column(JSONB)
     groups = Column(JSONB)
     last_check_in = Column(DateTime(timezone=True))
@@ -118,13 +126,14 @@ class AsDictWrapperDecorator[T]:
 
 @AsDictWrapper.decorate(Host)
 def minimal_db_host(empty_strings: bool = False, **fields: Any) -> dict[str, Any]:
+    if "insights_id" not in fields:
+        fields["insights_id"] = generate_uuid()
     return {
         "id": generate_uuid(),
         "org_id": "" if empty_strings else generate_uuid(),
         "created_on": datetime.now(UTC),
         "modified_on": datetime.now(UTC),
         "last_check_in": datetime.now(UTC),
-        "canonical_facts": {},
         "groups": [],
         "stale_timestamp": datetime.now(UTC),
         "reporter": "" if empty_strings else "iqe-hbi",

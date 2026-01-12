@@ -35,6 +35,7 @@ from app.staleness_serialization import get_sys_default_staleness
 from app.utils import Tag
 from tests.helpers.test_utils import SYSTEM_IDENTITY
 from tests.helpers.test_utils import USER_IDENTITY
+from tests.helpers.test_utils import base_host
 from tests.helpers.test_utils import generate_uuid
 from tests.helpers.test_utils import get_sample_profile_data
 from tests.helpers.test_utils import now
@@ -81,7 +82,7 @@ def test_update_existing_host_fix_display_name_using_existing_fqdn(db_create_hos
 
     # Update the host
     input_host = Host(
-        {"insights_id": insights_id},
+        insights_id=insights_id,
         display_name="",
         reporter="puptoo",
         stale_timestamp=now(),
@@ -106,7 +107,8 @@ def test_update_existing_host_display_name_changing_fqdn(db_create_host):
 
     # Update the host
     input_host = Host(
-        {"fqdn": new_fqdn, "insights_id": insights_id},
+        fqdn=new_fqdn,
+        insights_id=insights_id,
         display_name="",
         reporter="puptoo",
         stale_timestamp=now(),
@@ -128,7 +130,8 @@ def test_update_existing_host_update_display_name_from_id_using_existing_fqdn(db
 
     # Update the host
     input_host = Host(
-        {"insights_id": insights_id, "fqdn": expected_fqdn},
+        insights_id=insights_id,
+        fqdn=expected_fqdn,
         reporter="puptoo",
         stale_timestamp=now(),
         org_id=USER_IDENTITY["org_id"],
@@ -185,7 +188,7 @@ def test_update_existing_host_fix_display_name_using_id(db_create_host):
 
     # Update the host
     input_host = Host(
-        {"insights_id": insights_id},
+        insights_id=insights_id,
         display_name="",
         reporter="puptoo",
         stale_timestamp=now(),
@@ -1784,9 +1787,7 @@ def test_update_canonical_facts_columns_uuid_comparison(db_create_host):
 
     # Create a host with an insights_id
     insights_id_str = "8db0ffb4-ed3c-4376-968f-e4fdc734f193"
-    host = db_create_host(
-        extra_data={"canonical_facts": {"insights_id": insights_id_str}, "display_name": "test-host"}
-    )
+    host = db_create_host(extra_data={"insights_id": insights_id_str, "display_name": "test-host"})
 
     # Commit to ensure the host is fully persisted
     db.session.commit()
@@ -1799,7 +1800,7 @@ def test_update_canonical_facts_columns_uuid_comparison(db_create_host):
 
     # Update with the same canonical facts (insights_id as string)
     # This should NOT mark insights_id as modified
-    host.update_canonical_facts_columns({"insights_id": insights_id_str})
+    host.update(base_host(insights_id=insights_id_str, tags={}))
 
     # Get the inspection after update
     inspected_after = inspect(host)
